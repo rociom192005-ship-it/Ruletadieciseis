@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ruleta de la clase</title>
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:"Baloo 2","Nunito","Chalkboard SE","Comic Sans MS","Trebuchet MS",system-ui,sans-serif;background:linear-gradient(135deg,#fff3c4,#ffd9ec 50%,#cfeeff);color:#2b2d6e;overflow:hidden;-webkit-user-select:none;user-select:none}
+.app{height:100dvh;display:grid;grid-template-columns:minmax(300px,38%) 1fr;gap:12px;padding:12px}
+.panel{background:rgba(255,255,255,.78);border-radius:28px;box-shadow:0 8px 24px rgba(43,45,110,.16);min-height:0;min-width:0}
+.left{display:flex;flex-direction:column;align-items:center;padding:10px 14px;gap:8px}
+.right{padding:6px}
+.right svg{width:100%;height:100%;display:block}
+header{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:1.35rem;font-weight:800}
+.ib{border:0;border-radius:14px;background:#eef0fb;color:#2b2d6e;font:inherit;font-weight:700;padding:6px 12px;cursor:pointer}
+.ib:active{transform:scale(.95)}
+.next{display:flex;align-items:center;gap:12px;background:var(--c,#ddd);border-radius:22px;padding:4px 18px 4px 6px;font-weight:800;font-size:1.15rem;transition:background .4s}
+.next b{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:50%;background:#fff;font-size:1.8rem}
+.next small{display:block;font-size:.8rem;font-weight:700;opacity:.8}
+.wheel{position:relative;flex:1;min-height:0;width:100%;display:flex;justify-content:center;align-items:center}
+.wbox{position:relative}
+canvas{width:100%;height:100%;display:block}
+.ptr{position:absolute;top:-.1em;left:50%;transform:translateX(-50%);border-left:1.1em solid transparent;border-right:1.1em solid transparent;border-top:2.5em solid #ff3d71;filter:drop-shadow(0 .15em .1em rgba(0,0,0,.35));z-index:3}
+.res{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(0);background:#fff;border:.2em solid var(--c);border-radius:.5em;padding:.15em .5em;font-size:1.7em;font-weight:800;text-align:center;white-space:nowrap;z-index:4;transition:transform .45s cubic-bezier(.3,1.6,.5,1);pointer-events:none}
+.res.show{transform:translate(-50%,-50%) scale(1)}
+.res small{display:block;font-size:.5em;opacity:.8}
+.cf{position:absolute;left:50%;top:50%;width:12px;height:18px;border-radius:3px;z-index:5;pointer-events:none;animation:fly 1.7s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:0}}
+#go{border:0;border-radius:999px;padding:.35em 1.6em;font:inherit;font-size:2.2rem;font-weight:800;color:#fff;background:linear-gradient(180deg,#ff6b9a,#ff3d71);box-shadow:0 7px 0 #b81d4d,0 12px 20px rgba(184,29,77,.35);cursor:pointer;transition:transform .1s}
+#go:not(:disabled){animation:beat 1.4s infinite}
+#go:active:not(:disabled){transform:translateY(5px);box-shadow:0 2px 0 #b81d4d}
+#go:disabled{background:#c5c8d8;box-shadow:0 7px 0 #9498ad;animation:none;cursor:default}
+@keyframes beat{50%{transform:scale(1.06)}}
+.prog{width:100%;font-weight:700;text-align:center}
+.bar{height:12px;border-radius:9px;background:#e4e7f6;overflow:hidden;margin-top:3px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#69db7c,#4dabf7,#b197fc);transition:width .6s}
+/* mapa */
+.tbl polygon,.tbl path{fill:var(--c);fill-opacity:.22;stroke:#8d93a3;stroke-width:14;stroke-linejoin:round}
+.tbl .num{text-anchor:middle;dominant-baseline:central;font-size:170px;font-weight:800;fill:var(--c);opacity:.5}
+.tbl.next polygon,.tbl.next path{fill-opacity:.4;stroke:var(--c);animation:glow 1s infinite alternate}
+@keyframes glow{to{stroke-width:24}}
+.chair rect{fill:#fff;fill-opacity:.7;stroke:#a5acc4;stroke-width:5;stroke-dasharray:12 9}
+.chair text{text-anchor:middle;dominant-baseline:central;font-weight:800;fill:#1f2150}
+.chair.on{transform-box:fill-box;transform-origin:center;animation:pop .8s cubic-bezier(.3,1.6,.5,1);filter:drop-shadow(0 5px 5px rgba(0,0,0,.25))}
+.chair.on rect{fill:var(--c);fill-opacity:1;stroke:#fff;stroke-width:6;stroke-dasharray:none}
+.chair.last rect{stroke:#2b2d6e;stroke-width:9}
+@keyframes pop{0%{transform:scale(.2);opacity:0}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(43,45,110,.55);z-index:20}
+.modal.show{display:grid}
+.modal div{background:#fff;border-radius:32px;padding:32px 40px;text-align:center;max-width:90vw;animation:pop .7s cubic-bezier(.3,1.6,.5,1)}
+.modal h2{font-size:clamp(1.8rem,4vw,3rem);margin-bottom:8px}
+.modal p{font-size:1.3rem;margin-bottom:18px}
+.modal .ib{font-size:1.2rem;margin:4px;padding:10px 20px;background:#ffd43b}
+@media (max-aspect-ratio:1/1){.app{grid-template-columns:1fr;grid-template-rows:1.1fr 1fr}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="panel left">
+    <header>
+      <h1>🎡 Ruleta de la clase</h1>
+      <div><button class="ib" id="snd" title="Sonido">🔊</button> <button class="ib" id="fs">⛶ Pantalla completa</button> <button class="ib" id="rst" title="Empezar de nuevo">↺</button></div>
+    </header>
+    <div class="next" id="ind"><b id="nt">1</b><span><small>Siguiente</small><span id="ntx">Mesa 1</span></span></div>
+    <div class="wheel" id="wheel">
+      <div class="wbox" id="wbox">
+        <canvas id="cv" width="800" height="800"></canvas>
+        <div class="ptr"></div>
+        <div class="res" id="res"></div>
+      </div>
+    </div>
+    <button id="go">¡GIRAR!</button>
+    <div class="prog"><span id="pgt">0 de 25</span><div class="bar"><i id="pgb"></i></div></div>
+  </section>
+  <section class="panel right"><svg id="map" viewBox="100 85 1760 1340" preserveAspectRatio="xMidYMid meet" aria-label="Mapa de la clase"></svg></section>
+</div>
+<div class="modal" id="end"><div>
+  <h2>🎉 ¡Todos han participado! 🎉</h2>
+  <p>Los 25 alumnos y alumnas ya tienen su sitio en el mapa.</p>
+  <button class="ib" id="see">Ver el mapa</button> <button class="ib" id="again">Volver a empezar</button>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const COL=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#b197fc','#f783ac'];
+const FONT='"Baloo 2","Nunito","Chalkboard SE","Comic Sans MS","Trebuchet MS",system-ui,sans-serif';
+
+/* ===== Distribución exacta de la fotografía: [nombre, x, y] de cada silla ===== */
+const T={
+ 1:{c:'#ff7b7b',nx:360,ny:920,sh:'<polygon points="245,745 490,738 480,1085 240,1090"/>',
+    s:[['Paula Aguilar',255,975],['Roberto',222,815],['Evelyn',425,695],['Abril',500,815],['Luis',520,985]]},
+ 2:{c:'#ffa94d',nx:430,ny:395,sh:'<polygon points="320,205 545,192 550,565 312,578"/>',
+    s:[['Omar',262,480],['Elsa',253,305],['Yeray',445,145],['Valentina',615,235],['Chloé',545,415]]},
+ 3:{c:'#ffd43b',nx:880,ny:435,sh:'<polygon points="775,262 1030,252 1030,650 762,630"/>',
+    s:[['Emmanuel',770,598],['Olivia',780,380],['Gala',930,205],['Adriana',1095,335],['Brittany',1055,575]]},
+ 4:{c:'#69db7c',nx:1440,ny:415,sh:'<polygon points="1340,258 1595,245 1620,645 1340,640"/>',
+    s:[['Leo',1318,555],['Mathieu',1335,365],['María',1452,215],['Chloe Rubia',1700,350],['Lucía',1670,525]]},
+ 5:{c:'#4dabf7',nx:1365,ny:1075,sh:'<polygon points="1210,830 1535,825 1565,1345 1255,1355"/>',
+    s:[['David',1240,1235],['Paula',1240,990],['Noa',1345,770],['Housein',1583,975],['Valeria',1560,1160]]}
+};
+const S=[];
+for(const t in T){T[t].ids=[];T[t].s.forEach(([n,x,y])=>{T[t].ids.push(S.length);S.push({n,t:+t,x,y,d:false})})}
+const TOTAL=S.length; // 25
+
+/* ===== Mapa ===== */
+let h='';
+for(const t in T){const o=T[t];h+=`<g class="tbl" id="tb${t}" style="--c:${o.c}">${o.sh}<text class="num" x="${o.nx}" y="${o.ny}">${t}</text></g>`}
+S.forEach((s,i)=>{const L=s.n.length,w=L>10?L*17+30:170,f=Math.min(34,(w-24)/(L*.58));
+ h+=`<g class="chair" id="c${i}" style="--c:${T[s.t].c}"><rect x="${s.x-w/2}" y="${s.y-33}" width="${w}" height="66" rx="22"/><text x="${s.x}" y="${s.y}" style="font-size:${f}px"></text></g>`});
+$('map').innerHTML=h;
+
+/* ===== Estado ===== */
+let rot=0,busy=false,picks=0,last=5,nt=1,cur=[];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const remaining=t=>T[t].ids.filter(i=>!S[i].d);
+function nextTable(){for(let k=1;k<=5;k++){const t=(last+k-1)%5+1;if(remaining(t).length)return t}return 0} // 1→2→3→4→5→1…
+function newOrders(){cur=shuffle(S.map((_,i)=>i))} // los 26 nombres, siempre en la ruleta
+
+/* ===== Sonido ===== */
+let AC,snd=true;
+function beep(f,d,v=.07,type='square'){if(!snd)return;try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d)}catch(e){}}
+const win=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.3,.1,'triangle'),i*120));
+
+/* ===== Ruleta ===== */
+const cv=$('cv'),ctx=cv.getContext('2d');
+function draw(){
+ const n=cur.length,a=2*Math.PI/n,R=360;
+ ctx.clearRect(0,0,800,800);
+ ctx.beginPath();ctx.arc(400,400,392,0,7);ctx.fillStyle='#2b2d6e';ctx.fill();
+ for(let i=0;i<24;i++){const q=i*Math.PI/12;ctx.beginPath();ctx.arc(400+376*Math.cos(q),400+376*Math.sin(q),7,0,7);ctx.fillStyle=i%2?'#fff':'#ffd43b';ctx.fill()}
+ ctx.save();ctx.translate(400,400);ctx.rotate(rot);
+ cur.forEach((id,i)=>{
+  const s=S[id];
+  ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,i*a,(i+1)*a);ctx.closePath();
+  ctx.fillStyle=s.d?'#dfe3ee':COL[i%COL.length];ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();
+  ctx.save();ctx.rotate((i+.5)*a);ctx.textAlign='right';ctx.textBaseline='middle';
+  const txt=s.d?s.n+' ✓':s.n;let f=32;ctx.font=`800 ${f}px ${FONT}`;
+  while(ctx.measureText(txt).width>215&&f>16){f-=1;ctx.font=`800 ${f}px ${FONT}`}
+  ctx.fillStyle=s.d?'#9aa0b8':'#2b2d6e';ctx.fillText(txt,R-24,0);ctx.restore();
+ });
+ ctx.restore();
+ ctx.beginPath();ctx.arc(400,400,72,0,7);ctx.fillStyle='#fff';ctx.fill();ctx.lineWidth=10;ctx.strokeStyle='#ff3d71';ctx.stroke();
+ ctx.font='64px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#000';ctx.fillText('⭐',400,404);
+}
+const wr=$('wheel'),wb=$('wbox');
+new ResizeObserver(()=>{const s=Math.max(120,Math.min(wr.clientWidth,wr.clientHeight));wb.style.width=wb.style.height=s+'px';wb.style.fontSize=s/20+'px'}).observe(wr);
+
+/* ===== Panel: siguiente mesa, mapa y progreso ===== */
+function setup(){
+ document.querySelectorAll('.tbl.next').forEach(e=>e.classList.remove('next'));
+ rot%=2*Math.PI;
+ if(nt){$('nt').textContent=nt;$('ntx').textContent='Mesa '+nt+(nt===last?' (¡otra vez!)':'');
+  $('ind').style.setProperty('--c',T[nt].c);$('tb'+nt).classList.add('next');$('go').disabled=false;$('go').textContent='¡GIRAR!'}
+ else{$('nt').textContent='🏁';$('ntx').textContent='¡Fin!';$('ind').style.setProperty('--c','#ddd');$('go').disabled=true;$('go').textContent='¡Fin!'}
+ $('pgt').textContent=`${picks} de ${TOTAL}`;$('pgb').style.width=picks/TOTAL*100+'%';
+ draw();
+}
+
+/* ===== Girar (trucada: mesa en orden, alumno al azar sin repetir) ===== */
+function spin(){
+ if(busy||!nt)return;busy=true;$('go').disabled=true;
+ const rem=remaining(nt),pick=rem[Math.random()*rem.length|0];
+ const a=2*Math.PI/cur.length,idx=cur.indexOf(pick);
+ const target=-Math.PI/2-(idx+.5)*a+(Math.random()-.5)*a*.7;
+ const delta=(((target-rot)%(2*Math.PI))+2*Math.PI)%(2*Math.PI)+2*Math.PI*(5+(Math.random()*3|0));
+ const r0=rot,t0=performance.now(),D=5200;let lk=Math.floor(rot/a),lb=0;
+ (function f(now){
+  const p=Math.min(1,(now-t0)/D);rot=r0+delta*(1-Math.pow(1-p,4));draw();
+  const k=Math.floor(rot/a);if(k!==lk){lk=k;if(now-lb>60){lb=now;beep(880,.03,.05)}}
+  p<1?requestAnimationFrame(f):landed(pick);
+ })(t0);
+}
+function landed(i){
+ const s=S[i];s.d=true;picks++;last=s.t;
+ document.querySelectorAll('.chair.last').forEach(e=>e.classList.remove('last'));
+ const c=$('c'+i);c.querySelector('text').textContent=s.n;c.classList.add('on','last');
+ const r=$('res');r.innerHTML=`<small>Mesa ${s.t}</small>${s.n}`;r.style.setProperty('--c',T[s.t].c);r.classList.add('show');
+ confetti(46);win();
+ $('pgt').textContent=`${picks} de ${TOTAL}`;$('pgb').style.width=picks/TOTAL*100+'%';
+ setTimeout(()=>{r.classList.remove('show');nt=nextTable();setup();busy=false;
+  if(!nt){$('end').classList.add('show');confetti(90);win()}},2400);
+}
+function confetti(n){for(let i=0;i<n;i++){const d=document.createElement('i');d.className='cf';
+ d.style.cssText=`background:${COL[i%COL.length]};--x:${(Math.random()-.5)*1000}px;--y:${(Math.random()-.8)*700}px;--r:${Math.random()*720}deg`;
+ wb.appendChild(d);setTimeout(()=>d.remove(),1800)}}
+
+/* ===== Controles ===== */
+function reset(){
+ if(busy)return;S.forEach(s=>s.d=false);picks=0;last=5;rot=0;
+ document.querySelectorAll('.chair').forEach(c=>{c.classList.remove('on','last');c.querySelector('text').textContent=''});
+ newOrders();nt=nextTable();$('end').classList.remove('show');setup();
+}
+$('go').onclick=spin;
+let rq=0;
+$('rst').onclick=e=>{const b=e.currentTarget;
+ if(rq){clearTimeout(rq);rq=0;b.textContent='↺';reset();return}
+ b.textContent='¿Seguro? ↺';rq=setTimeout(()=>{rq=0;b.textContent='↺'},3000)};
+$('again').onclick=reset;
+$('see').onclick=()=>$('end').classList.remove('show');
+$('snd').onclick=e=>{snd=!snd;e.target.textContent=snd?'🔊':'🔇'};
+$('fs').onclick=()=>{const d=document,e=d.documentElement;
+ if(d.fullscreenElement||d.webkitFullscreenElement)(d.exitFullscreen||d.webkitExitFullscreen).call(d);
+ else(e.requestFullscreen||e.webkitRequestFullscreen||(()=>{})).call(e)};
+newOrders();nt=nextTable();setup();
+</script>
+</body>
+</html>
